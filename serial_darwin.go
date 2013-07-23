@@ -7,14 +7,15 @@ import "C"
 
 import (
 	"os"
+	"errors"
 	"io"
 	"fmt"
 	"syscall"
 	//"unsafe"
 )
 
-func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
-	f, err := os.OpenFile(name, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK, 0666)
+func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
+	f, err := os.OpenFile(name, syscall.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0666)
 	if err != nil {
 		return
 	}
@@ -22,7 +23,7 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	fd := C.int(f.Fd())
 	if C.isatty(fd) != 1 {
 		f.Close()
-		return nil, os.NewError("File is not a tty")
+		return nil, errors.New("File is not a tty")
 	}
 
 	var st C.struct_termios
@@ -82,7 +83,7 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	if e != 0 || r1 != 0 {
 		s := fmt.Sprint("Clearing NONBLOCK syscall error:", e, r1)
 		f.Close()
-		return nil, os.NewError(s)
+		return nil, errors.New(s)
 	}
 
 	/*
@@ -93,7 +94,7 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 			        if e != 0 || r1 != 0 {
 			                s := fmt.Sprint("Baudrate syscall error:", e, r1)
 					f.Close()
-		                        return nil, os.NewError(s)
+		                        return nil, errors.New(s)
 				}
 	*/
 

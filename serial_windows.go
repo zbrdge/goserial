@@ -35,7 +35,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
+func openPort(name string, baud int) (rwc io.ReadWriteCloser, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -89,11 +89,11 @@ func openPort(name string, baud int) (rwc io.ReadWriteCloser, err os.Error) {
 	return port, nil
 }
 
-func (p *serialPort) Close() os.Error {
+func (p *serialPort) Close() error {
 	return p.f.Close()
 }
 
-func (p *serialPort) Write(buf []byte) (int, os.Error) {
+func (p *serialPort) Write(buf []byte) (int, error) {
 	p.wl.Lock()
 	defer p.wl.Unlock()
 
@@ -108,7 +108,7 @@ func (p *serialPort) Write(buf []byte) (int, os.Error) {
 	return getOverlappedResult(p.fd, p.wo)
 }
 
-func (p *serialPort) Read(buf []byte) (int, os.Error) {
+func (p *serialPort) Read(buf []byte) (int, error) {
 	if p == nil || p.f == nil {
 		return 0, fmt.Errorf("Invalid port on read %v %v", p, p.f)
 	}
@@ -161,14 +161,14 @@ func getProcAddr(lib syscall.Handle, name string) uintptr {
 	return addr
 }
 
-func errno(e uintptr) os.Error {
+func errno(e uintptr) error {
 	if e != 0 {
 		return os.Errno(e)
 	}
 	return os.Errno(syscall.EINVAL)
 }
 
-func setCommState(h syscall.Handle, baud int) os.Error {
+func setCommState(h syscall.Handle, baud int) error {
 	var params structDCB
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
@@ -185,7 +185,7 @@ func setCommState(h syscall.Handle, baud int) os.Error {
 	return nil
 }
 
-func setCommTimeouts(h syscall.Handle) os.Error {
+func setCommTimeouts(h syscall.Handle) error {
 	var timeouts structTimeouts
 	const MAXDWORD = 1<<32 - 1
 	timeouts.ReadIntervalTimeout = MAXDWORD
@@ -221,7 +221,7 @@ func setCommTimeouts(h syscall.Handle) os.Error {
 	return nil
 }
 
-func setupComm(h syscall.Handle, in, out int) os.Error {
+func setupComm(h syscall.Handle, in, out int) error {
 	r, _, e := syscall.Syscall(nSetupComm, 3, uintptr(h), uintptr(in), uintptr(out))
 	if r == 0 {
 		return errno(e)
@@ -229,7 +229,7 @@ func setupComm(h syscall.Handle, in, out int) os.Error {
 	return nil
 }
 
-func setCommMask(h syscall.Handle) os.Error {
+func setCommMask(h syscall.Handle) error {
 	const EV_RXCHAR = 0x0001
 	r, _, e := syscall.Syscall(nSetCommMask, 2, uintptr(h), EV_RXCHAR, 0)
 	if r == 0 {
@@ -238,7 +238,7 @@ func setCommMask(h syscall.Handle) os.Error {
 	return nil
 }
 
-func resetEvent(h syscall.Handle) os.Error {
+func resetEvent(h syscall.Handle) error {
 	r, _, e := syscall.Syscall(nResetEvent, 1, uintptr(h), 0, 0)
 	if r == 0 {
 		return errno(e)
@@ -246,7 +246,7 @@ func resetEvent(h syscall.Handle) os.Error {
 	return nil
 }
 
-func newOverlapped() (*syscall.Overlapped, os.Error) {
+func newOverlapped() (*syscall.Overlapped, error) {
 	var overlapped syscall.Overlapped
 	r, _, e := syscall.Syscall6(nCreateEvent, 4, 0, 1, 0, 0, 0, 0)
 	if r == 0 {
@@ -256,7 +256,7 @@ func newOverlapped() (*syscall.Overlapped, os.Error) {
 	return &overlapped, nil
 }
 
-func getOverlappedResult(h syscall.Handle, overlapped *syscall.Overlapped) (int, os.Error) {
+func getOverlappedResult(h syscall.Handle, overlapped *syscall.Overlapped) (int, error) {
 	var n int
 	r, _, e := syscall.Syscall6(nGetOverlappedResult, 4,
 		uintptr(h),
